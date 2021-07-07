@@ -1,15 +1,25 @@
 use chrono::offset::TimeZone;
 use chrono::{DateTime, NaiveDateTime};
 
-use chrono_tz::Tz;
+use chrono_tz::{Tz, TZ_VARIANTS};
 
 use std::fs::{self, read_link};
 use std::io;
 use std::path::Path;
 use std::str::FromStr;
 
-pub fn parse_tz(tz: &str) -> Result<Tz, String> {
-    Tz::from_str(tz)
+pub fn parse_tz(tz: &str) -> Option<Tz> {
+    let result = Tz::from_str(tz);
+
+    if let Ok(tz) = result {
+        Some(tz)
+    } else {
+        let tz = tz.to_lowercase();
+        TZ_VARIANTS
+            .iter()
+            .find(|&variant| variant.name().to_lowercase().contains(&tz))
+            .map(|tz| tz.to_owned())
+    }
 }
 
 pub fn parse_datetime_in_tz(tz: Tz, datetime: &str) -> Option<DateTime<Tz>> {

@@ -17,10 +17,10 @@ use tz::{convert, current_tz};
 
 // TODO:
 // - [x] Basic operation
+// - [x] TZ_IDENTIFIER should accept looser input
 // - [ ] "From" TZ
 // - [ ] DATETIME should work with just a time
 // - [ ] DATETIME should work with things like "5pm"
-// - [ ] TZ_IDENTIFIER should accept looser input
 
 fn main() {
     let matches = App::new("tz")
@@ -39,6 +39,13 @@ fn main() {
                 .about("Enable verbose output"),
         )
         .arg(
+            Arg::new("from")
+                .short('f')
+                .long("from")
+                .takes_value(true)
+                .about("Timezone to convert from (defaults to your current TZ)"),
+        )
+        .arg(
             Arg::new("DATETIME")
                 .about("Date-time to convert (instead of _now_)")
                 .required(false)
@@ -50,10 +57,17 @@ fn main() {
 
     let to_tz = matches.value_of("TZ_IDENTIFIER").unwrap();
     let to_tz = parse_tz(to_tz).expect("Invalid TZ!");
-    let from_tz = current_tz().expect("Failed to determine current timezone");
+
+    let current_tz = current_tz().expect("Failed to determine current timezone");
+    let from_tz = matches
+        .value_of("from")
+        .map(|tz| parse_tz(tz))
+        .flatten()
+        .unwrap_or(current_tz);
 
     if verbose {
         eprintln!("-> Detected current location: {}", from_tz);
+        eprintln!("-> Detected target location: {}", to_tz);
     }
 
     let datetime = matches.value_of("DATETIME");
