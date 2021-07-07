@@ -17,7 +17,13 @@ pub fn parse_tz(tz: &str) -> Option<Tz> {
         let tz = tz.to_lowercase();
         TZ_VARIANTS
             .iter()
-            .find(|&variant| variant.name().to_lowercase().contains(&tz))
+            .find(|&variant| {
+                variant
+                    .name()
+                    .to_lowercase()
+                    .replace("_", " ")
+                    .contains(&tz)
+            })
             .map(|tz| tz.to_owned())
     }
 }

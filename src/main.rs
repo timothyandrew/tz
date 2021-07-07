@@ -1,6 +1,7 @@
 use chrono::Local;
 use chrono::TimeZone;
 
+use chrono_tz::TZ_VARIANTS;
 use clap::{App, Arg};
 use tz::parse_datetime_in_tz;
 use tz::parse_tz;
@@ -29,7 +30,7 @@ fn main() {
         .arg(
             Arg::new("TARGET_TZ")
                 .about("Timezone to convert to")
-                .required(true)
+                .required_unless_present_any(&["list"])
                 .index(1),
         )
         .arg(
@@ -37,6 +38,13 @@ fn main() {
                 .short('v')
                 .takes_value(false)
                 .about("Enable verbose output"),
+        )
+        .arg(
+            Arg::new("list")
+                .short('l')
+                .long("list")
+                .takes_value(false)
+                .about("List all available timezones"),
         )
         .arg(
             Arg::new("from")
@@ -53,6 +61,11 @@ fn main() {
         )
         .get_matches();
 
+    if matches.occurrences_of("list") == 1 {
+        TZ_VARIANTS.iter().for_each(|tz| println!("{}", tz));
+        return;
+    }
+
     let verbose = matches.occurrences_of("verbose") == 1;
 
     let to_tz = matches.value_of("TARGET_TZ").unwrap();
@@ -65,11 +78,6 @@ fn main() {
         .flatten()
         .unwrap_or(current_tz);
 
-    if verbose {
-        eprintln!("-> Detected current location: {}", from_tz);
-        eprintln!("-> Detected target location: {}", to_tz);
-    }
-
     let datetime = matches.value_of("DATETIME");
     let datetime = if let Some(datetime) = datetime {
         parse_datetime_in_tz(from_tz, datetime).expect("Invalid DATETIME")
@@ -79,6 +87,12 @@ fn main() {
             .single()
             .expect("Couldn't determine <now>")
     };
+
+    if verbose {
+        eprintln!("-> Detected current location: {}", from_tz);
+        eprintln!("-> Detected target location: {}", to_tz);
+        eprintln!("-> Pre-conversion time: {}\n", datetime);
+    }
 
     let result = convert(datetime, to_tz);
 
