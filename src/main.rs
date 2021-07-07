@@ -17,7 +17,7 @@ use tz::{convert, current_tz};
 
 // TODO:
 // - [x] Basic operation
-// - [x] TZ_IDENTIFIER should accept looser input
+// - [x] TARGET_TZ should accept looser input
 // - [ ] "From" TZ
 // - [ ] DATETIME should work with just a time
 // - [ ] DATETIME should work with things like "5pm"
@@ -27,7 +27,7 @@ fn main() {
         .version("0.1")
         .about("Convert between timezones")
         .arg(
-            Arg::new("TZ_IDENTIFIER")
+            Arg::new("TARGET_TZ")
                 .about("Timezone to convert to")
                 .required(true)
                 .index(1),
@@ -47,7 +47,7 @@ fn main() {
         )
         .arg(
             Arg::new("DATETIME")
-                .about("Date-time to convert (instead of _now_)")
+                .about("Date-time to convert (defaults to <now>)")
                 .required(false)
                 .index(2),
         )
@@ -55,8 +55,8 @@ fn main() {
 
     let verbose = matches.occurrences_of("verbose") == 1;
 
-    let to_tz = matches.value_of("TZ_IDENTIFIER").unwrap();
-    let to_tz = parse_tz(to_tz).expect("Invalid TZ!");
+    let to_tz = matches.value_of("TARGET_TZ").unwrap();
+    let to_tz = parse_tz(to_tz).expect("Invalid target TZ!");
 
     let current_tz = current_tz().expect("Failed to determine current timezone");
     let from_tz = matches
