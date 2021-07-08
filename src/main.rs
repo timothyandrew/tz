@@ -19,8 +19,8 @@ use tz::{convert, current_tz};
 // TODO:
 // - [x] Basic operation
 // - [x] TARGET_TZ should accept looser input
-// - [ ] "From" TZ
-// - [ ] DATETIME should work with just a time
+// - [x] "From" TZ
+// - [x] DATETIME should work with just a time
 // - [ ] DATETIME should work with things like "5pm"
 
 fn main() {
@@ -55,7 +55,7 @@ fn main() {
         )
         .arg(
             Arg::new("DATETIME")
-                .about("Date-time to convert (defaults to <now>)")
+                .about("Date or time (or both) to convert (defaults to <now>)")
                 .required(false)
                 .index(2),
         )

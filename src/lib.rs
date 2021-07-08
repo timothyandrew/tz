@@ -1,13 +1,15 @@
 use chrono::offset::TimeZone;
-use chrono::{DateTime, NaiveDateTime};
+use chrono::{DateTime, Datelike, Local};
 
 use chrono_tz::{Tz, TZ_VARIANTS};
+use regex::Regex;
 
 use std::fs::{self, read_link};
 use std::io;
 use std::path::Path;
 use std::str::FromStr;
 
+/// Given a timezone string (like 'Asia/Kolkata'), return a chrono `Tz` that represents it
 pub fn parse_tz(tz: &str) -> Option<Tz> {
     let result = Tz::from_str(tz);
 
@@ -28,17 +30,31 @@ pub fn parse_tz(tz: &str) -> Option<Tz> {
     }
 }
 
+// Given a `Tz`, convert the given date/time string to a DateTime in that timezone
 pub fn parse_datetime_in_tz(tz: Tz, datetime: &str) -> Option<DateTime<Tz>> {
-    let format = "%Y-%m-%d %H:%M";
-    let start_of_day = format!("{} 00:00", datetime);
+    let only_date = Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap();
+    let only_time = Regex::new(r"^\d{1,2}:\d{2}$").unwrap();
+    let date_and_time = Regex::new(r"^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}$").unwrap();
 
-    let datetime = if let Ok(_) = NaiveDateTime::parse_from_str(&start_of_day, &format) {
-        &start_of_day
+    let datetime = if only_date.is_match(datetime) {
+        format!("{} 00:00", datetime)
+    } else if only_time.is_match(datetime) {
+        let today = Local::now();
+        format!(
+            "{}-{}-{} {}",
+            today.year(),
+            today.month(),
+            today.day(),
+            datetime
+        )
+    } else if date_and_time.is_match(datetime) {
+        datetime.to_owned()
     } else {
-        datetime
+        return None;
     };
 
-    tz.datetime_from_str(datetime, format).ok()
+    let format = "%Y-%m-%d %H:%M";
+    tz.datetime_from_str(&datetime, format).ok()
 }
 
 pub fn convert<T: TimeZone>(dt: DateTime<Tz>, to_timezone: T) -> DateTime<T> {
@@ -68,18 +84,16 @@ pub fn current_tz() -> io::Result<Tz> {
 
 #[cfg(test)]
 mod tests {
+    use chrono::{Datelike, Local};
     use chrono_tz::{Asia::Kolkata, Europe::London};
 
     use super::*;
 
     #[test]
     fn test_parse_tz() {
-        assert_eq!(parse_tz("Asia/Kolkata"), Ok(Tz::Asia__Kolkata));
-        assert_eq!(
-            parse_tz("FooBar"),
-            Err("'FooBar' is not a valid timezone".to_owned())
-        );
-        assert_eq!(parse_tz("Europe/London"), Ok(Tz::Europe__London));
+        assert_eq!(parse_tz("Asia/Kolkata"), Some(Tz::Asia__Kolkata));
+        assert_eq!(parse_tz("FooBar"), None);
+        assert_eq!(parse_tz("Europe/London"), Some(Tz::Europe__London));
     }
 
     #[test]
@@ -93,5 +107,33 @@ mod tests {
     #[test]
     fn test_current_tz() {
         assert_eq!(current_tz().unwrap(), Kolkata);
+    }
+
+    #[test]
+    fn test_parse_datetime_in_tz() {
+        assert_eq!(
+            parse_datetime_in_tz(Kolkata, "2021-07-09 05:00"),
+            Some(Kolkata.ymd(2021, 07, 09).and_hms(5, 0, 0))
+        );
+
+        assert_eq!(
+            parse_datetime_in_tz(Kolkata, "2021-07-09 5:00"),
+            Some(Kolkata.ymd(2021, 07, 09).and_hms(5, 0, 0))
+        );
+
+        assert_eq!(
+            parse_datetime_in_tz(Kolkata, "2021-07-09"),
+            Some(Kolkata.ymd(2021, 07, 09).and_hms(0, 0, 0))
+        );
+
+        let today = Local::now();
+        assert_eq!(
+            parse_datetime_in_tz(Kolkata, "05:00"),
+            Some(
+                Kolkata
+                    .ymd(today.year(), today.month(), today.day())
+                    .and_hms(5, 0, 0)
+            )
+        );
     }
 }
