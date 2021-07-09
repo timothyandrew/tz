@@ -35,7 +35,7 @@ pub fn parse_datetime_in_tz(tz: Tz, datetime: &str) -> Option<DateTime<Tz>> {
     let only_date = Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap();
     let only_time = Regex::new(r"^\d{1,2}:\d{2}$").unwrap();
     let date_and_time = Regex::new(r"^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}$").unwrap();
-    let short_time = Regex::new(r"^(\d)+:?(\d+)?\s?(am|pm)$").unwrap();
+    let short_time = Regex::new(r"^(\d+):?(\d+)?\s?(am|pm)$").unwrap();
 
     let datetime = datetime.to_lowercase();
 
@@ -77,7 +77,7 @@ fn parse_short_time(short_time: Captures) -> String {
     };
 
     format!(
-        "{}-{}-{} {}:{}",
+        "{}-{:02}-{:02} {:02}:{:02}",
         today.year(),
         today.month(),
         today.day(),
@@ -176,11 +176,11 @@ mod tests {
         );
 
         assert_eq!(
-            parse_datetime_in_tz(Kolkata, "5pm"),
+            parse_datetime_in_tz(Kolkata, "10pm"),
             Some(
                 Kolkata
                     .ymd(today.year(), today.month(), today.day())
-                    .and_hms(17, 0, 0)
+                    .and_hms(22, 0, 0)
             )
         );
 
