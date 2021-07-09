@@ -2,7 +2,7 @@ use chrono::offset::TimeZone;
 use chrono::{DateTime, Datelike, Local};
 
 use chrono_tz::{Tz, TZ_VARIANTS};
-use regex::Regex;
+use regex::{Captures, Regex};
 
 use std::fs::{self, read_link};
 use std::io;
@@ -35,10 +35,15 @@ pub fn parse_datetime_in_tz(tz: Tz, datetime: &str) -> Option<DateTime<Tz>> {
     let only_date = Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap();
     let only_time = Regex::new(r"^\d{1,2}:\d{2}$").unwrap();
     let date_and_time = Regex::new(r"^\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}$").unwrap();
+    let short_time = Regex::new(r"^(\d)+:?(\d+)?\s?(am|pm)$").unwrap();
 
-    let datetime = if only_date.is_match(datetime) {
+    let datetime = datetime.to_lowercase();
+
+    let datetime = if only_date.is_match(&datetime) {
         format!("{} 00:00", datetime)
-    } else if only_time.is_match(datetime) {
+    } else if short_time.is_match(&datetime) {
+        parse_short_time(short_time.captures(&datetime).unwrap())
+    } else if only_time.is_match(&datetime) {
         let today = Local::now();
         format!(
             "{}-{}-{} {}",
@@ -47,7 +52,7 @@ pub fn parse_datetime_in_tz(tz: Tz, datetime: &str) -> Option<DateTime<Tz>> {
             today.day(),
             datetime
         )
-    } else if date_and_time.is_match(datetime) {
+    } else if date_and_time.is_match(&datetime) {
         datetime.to_owned()
     } else {
         return None;
@@ -55,6 +60,30 @@ pub fn parse_datetime_in_tz(tz: Tz, datetime: &str) -> Option<DateTime<Tz>> {
 
     let format = "%Y-%m-%d %H:%M";
     tz.datetime_from_str(&datetime, format).ok()
+}
+
+fn parse_short_time(short_time: Captures) -> String {
+    let hour = short_time.get(1).unwrap().as_str();
+    let minute = short_time
+        .get(2)
+        .map_or(0, |minute| minute.as_str().parse::<i32>().unwrap());
+    let ampm = short_time.get(3).unwrap().as_str();
+    let today = Local::now();
+
+    let hour = match ampm {
+        "am" => hour.parse::<usize>().unwrap(),
+        "pm" => hour.parse::<usize>().unwrap() + 12,
+        _ => panic!("Shouldn't get here"),
+    };
+
+    format!(
+        "{}-{}-{} {}:{}",
+        today.year(),
+        today.month(),
+        today.day(),
+        hour,
+        minute
+    )
 }
 
 pub fn convert<T: TimeZone>(dt: DateTime<Tz>, to_timezone: T) -> DateTime<T> {
@@ -127,12 +156,40 @@ mod tests {
         );
 
         let today = Local::now();
+
         assert_eq!(
             parse_datetime_in_tz(Kolkata, "05:00"),
             Some(
                 Kolkata
                     .ymd(today.year(), today.month(), today.day())
                     .and_hms(5, 0, 0)
+            )
+        );
+
+        assert_eq!(
+            parse_datetime_in_tz(Kolkata, "3am"),
+            Some(
+                Kolkata
+                    .ymd(today.year(), today.month(), today.day())
+                    .and_hms(3, 0, 0)
+            )
+        );
+
+        assert_eq!(
+            parse_datetime_in_tz(Kolkata, "5pm"),
+            Some(
+                Kolkata
+                    .ymd(today.year(), today.month(), today.day())
+                    .and_hms(17, 0, 0)
+            )
+        );
+
+        assert_eq!(
+            parse_datetime_in_tz(Kolkata, "5:30pm"),
+            Some(
+                Kolkata
+                    .ymd(today.year(), today.month(), today.day())
+                    .and_hms(17, 30, 0)
             )
         );
     }

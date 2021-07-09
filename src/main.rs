@@ -22,6 +22,7 @@ use tz::{convert, current_tz};
 // - [x] "From" TZ
 // - [x] DATETIME should work with just a time
 // - [ ] DATETIME should work with things like "5pm"
+// - [ ] Convert time ranges
 
 fn main() {
     let matches = App::new("tz")
@@ -55,7 +56,7 @@ fn main() {
         )
         .arg(
             Arg::new("DATETIME")
-                .about("Date or time (or both) to convert (defaults to <now>)")
+                .about("Date or time (or both) to convert, defaults to <now> (allowed formats are YYYY-MM-DD, HH:MM, YYYY-MM-DD HH:MM, and HHam/pm)")
                 .required(false)
                 .index(2),
         )
