@@ -29,10 +29,20 @@ fn main() {
         .version("0.1")
         .about("Convert between timezones")
         .arg(
-            Arg::new("TARGET_TZ")
-                .about("Timezone to convert to")
-                .required_unless_present_any(&["list"])
-                .index(1),
+            Arg::new("to")
+                .short('t')
+                .long("to")
+                .takes_value(true)
+                .required_unless_present_any(&["from"])
+                .about("Timezone to convert to (defaults to your current TZ)")
+        )
+        .arg(
+            Arg::new("from")
+                .short('f')
+                .long("from")
+                .takes_value(true)
+                .required_unless_present_any(&["to"])
+                .about("Timezone to convert from (defaults to your current TZ)")
         )
         .arg(
             Arg::new("verbose")
@@ -48,17 +58,10 @@ fn main() {
                 .about("List all available timezones"),
         )
         .arg(
-            Arg::new("from")
-                .short('f')
-                .long("from")
-                .takes_value(true)
-                .about("Timezone to convert from (defaults to your current TZ)"),
-        )
-        .arg(
             Arg::new("DATETIME")
                 .about("Date or time (or both) to convert, defaults to <now> (allowed formats are YYYY-MM-DD, HH:MM, YYYY-MM-DD HH:MM, and HHam/pm)")
                 .required(false)
-                .index(2),
+                .index(1),
         )
         .get_matches();
 
@@ -68,11 +71,14 @@ fn main() {
     }
 
     let verbose = matches.occurrences_of("verbose") == 1;
-
-    let to_tz = matches.value_of("TARGET_TZ").unwrap();
-    let to_tz = parse_tz(to_tz).expect("Invalid target TZ!");
-
     let current_tz = current_tz().expect("Failed to determine current timezone");
+
+    let to_tz = matches
+        .value_of("to")
+        .map(|tz| parse_tz(tz))
+        .flatten()
+        .unwrap_or(current_tz);
+
     let from_tz = matches
         .value_of("from")
         .map(|tz| parse_tz(tz))
@@ -90,8 +96,7 @@ fn main() {
     };
 
     if verbose {
-        eprintln!("-> Detected current location: {}", from_tz);
-        eprintln!("-> Detected target location: {}", to_tz);
+        eprintln!("-> Converting from {} to {}", from_tz, to_tz);
         eprintln!("-> Pre-conversion time: {}\n", datetime);
     }
 
