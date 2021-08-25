@@ -91,16 +91,22 @@ pub fn convert<T: TimeZone>(dt: DateTime<Tz>, to_timezone: T) -> DateTime<T> {
 }
 
 pub fn current_tz() -> io::Result<Tz> {
-    let linux_path = Path::new("/etc/timezone");
-    let macos_path = Path::new("/etc/localtime");
+    let direct_path = Path::new("/etc/timezone");
+    let symlink_path = Path::new("/etc/localtime");
 
-    let tz = if linux_path.exists() {
-        fs::read_to_string(linux_path)?
-    } else if macos_path.exists() {
-        let path = read_link(macos_path)?;
-        let path = path
-            .strip_prefix("/var/db/timezone/zoneinfo/")
-            .expect("Failed to strip TZ prefix");
+    let tz = if direct_path.exists() {
+        fs::read_to_string(direct_path)?
+    } else if symlink_path.exists() {
+        let path = read_link(symlink_path)?;
+
+        let prefixes = vec!["/var/db/timezone/zoneinfo/", "/usr/share/zoneinfo/"];
+
+        let mut matching = prefixes.iter().filter_map(|&prefix| {
+            let path = path.strip_prefix(prefix);
+            path.ok()
+        });
+
+        let path = matching.next().expect("Failed to strip TZ prefix");
         path.to_str().unwrap().to_owned()
     } else {
         panic!("Failed to read current TZ")
